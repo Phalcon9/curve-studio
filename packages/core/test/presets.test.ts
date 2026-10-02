@@ -74,6 +74,21 @@ describe('fee scheduler', () => {
     })
 })
 
+describe('fees collected in the output token', () => {
+    const spec = getPreset('classic-meme')
+    const sim = CurveSim.fromCompiled(compilePreset({ ...spec, fee: { ...spec.fee, collectIn: 'output' } }, SOL))
+
+    test('fee bps are measured against the tokens bought, matching the quote-collected curve', () => {
+        const [t0, late] = sim.sniperTable(500, [0, 600])
+        expect(t0.feeBps).toBeCloseTo(5000, -1)
+        expect(late.feeBps).toBeCloseTo(100, -1)
+    })
+
+    test('bundled first buy quotes the minimum fee', () => {
+        expect(sim.quoteBuy(toAtoms(1, 9), { firstSwapMinFee: true }).feeBps).toBeCloseTo(100, -1)
+    })
+})
+
 describe('creator first buy', () => {
     test('bundled first buy pays the minimum fee, not the anti-sniper fee', () => {
         const sim = CurveSim.fromCompiled(compilePreset(getPreset('classic-meme'), SOL))

@@ -1,68 +1,10 @@
 import BN from 'bn.js'
 import {
-    getDeltaAmountQuoteUnsigned,
-    getNextSqrtPriceFromInput,
-    Rounding,
+    getMigrationThresholdPrice,
     type ConfigParameters,
     type PoolConfig,
     type VirtualPool,
 } from '@meteora-ag/dynamic-bonding-curve-sdk'
-
-type CurvePoint = ConfigParameters['curve'][number]
-
-/**
- * Port of the program's `get_migration_threshold_price`
- * (programs/dynamic-bonding-curve/src/utils): walk the curve until
- * `migrationQuoteThreshold` of quote has been absorbed. The SDK does not export it.
- */
-export function getMigrationThresholdPrice(
-    migrationThreshold: BN,
-    sqrtStartPrice: BN,
-    curve: CurvePoint[]
-): BN {
-    let nextSqrtPrice = sqrtStartPrice
-    const first = getDeltaAmountQuoteUnsigned(
-        nextSqrtPrice,
-        curve[0].sqrtPrice,
-        curve[0].liquidity,
-        Rounding.Up
-    )
-    if (first.gt(migrationThreshold)) {
-        return getNextSqrtPriceFromInput(
-            nextSqrtPrice,
-            curve[0].liquidity,
-            migrationThreshold,
-            false
-        )
-    }
-
-    let amountLeft = migrationThreshold.sub(first)
-    nextSqrtPrice = curve[0].sqrtPrice
-    for (let i = 1; i < curve.length; i++) {
-        const maxAmount = getDeltaAmountQuoteUnsigned(
-            nextSqrtPrice,
-            curve[i].sqrtPrice,
-            curve[i].liquidity,
-            Rounding.Up
-        )
-        if (maxAmount.gt(amountLeft)) {
-            nextSqrtPrice = getNextSqrtPriceFromInput(
-                nextSqrtPrice,
-                curve[i].liquidity,
-                amountLeft,
-                false
-            )
-            amountLeft = new BN(0)
-            break
-        }
-        amountLeft = amountLeft.sub(maxAmount)
-        nextSqrtPrice = curve[i].sqrtPrice
-    }
-    if (!amountLeft.isZero()) {
-        throw new Error('curve cannot absorb migrationQuoteThreshold')
-    }
-    return nextSqrtPrice
-}
 
 const ZERO = new BN(0)
 

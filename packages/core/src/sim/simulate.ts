@@ -4,6 +4,7 @@ import {
     CollectFeeMode,
     swapQuotePartialFill,
     type PoolConfig,
+    type SwapQuote2Result,
     type VirtualPool,
 } from '@meteora-ag/dynamic-bonding-curve-sdk'
 import type { CompiledPreset } from '../presets/compile'
@@ -198,11 +199,10 @@ export class CurveSim {
         return seconds.map((t) => {
             const q = swapQuotePartialFill(this.clonePool(), this.config, false, amountIn, 0, false, new BN(t), false)
             const paid = fromAtoms(q.includedFeeInputAmount, this.quoteDec)
-            const fee = q.tradingFee.add(q.protocolFee).add(q.referralFee)
             const tokens = fromAtoms(q.outputAmount, this.baseDec)
             return {
                 second: t,
-                feeBps: n(new Decimal(fee.toString()).div(q.includedFeeInputAmount.toString()).mul(10_000)),
+                feeBps: this.buyFeeBps(q),
                 tokens: n(tokens),
                 avgPriceVsStart: tokens.isZero() ? 0 : n(paid.div(tokens).div(start)),
             }
@@ -215,15 +215,22 @@ export class CurveSim {
      */
     quoteBuy(amountIn: BN, { firstSwapMinFee = false, atSecond = 0 } = {}) {
         const q = swapQuotePartialFill(this.clonePool(), this.config, false, amountIn, 0, false, new BN(atSecond), firstSwapMinFee)
-        const fee = q.tradingFee.add(q.protocolFee).add(q.referralFee)
         return {
             outputAmount: q.outputAmount,
-            feeBps: q.includedFeeInputAmount.isZero()
-                ? 0
-                : n(new Decimal(fee.toString()).div(q.includedFeeInputAmount.toString()).mul(10_000)),
+            feeBps: this.buyFeeBps(q),
             /** Quote left unspent when the buy would overshoot graduation. */
             amountLeft: q.amountLeft,
         }
+    }
+
+    /**
+     * A buy's fee as a share of what it trades: of the quote paid in, or, when
+     * the config collects fees in the output token, of the tokens bought.
+     */
+    private buyFeeBps(q: SwapQuote2Result): number {
+        const fee = q.tradingFee.add(q.protocolFee).add(q.referralFee)
+        const gross = this.config.collectFeeMode === CollectFeeMode.OutputToken ? q.outputAmount.add(fee) : q.includedFeeInputAmount
+        return gross.isZero() ? 0 : n(new Decimal(fee.toString()).div(gross.toString()).mul(10_000))
     }
 
     private point(sqrtPrice: BN, quoteReserve: BN, sold: BN): CurvePoint {
