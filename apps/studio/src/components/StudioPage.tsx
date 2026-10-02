@@ -14,16 +14,8 @@ import { FeeSplit } from './FeeSplit'
 import { DeployPanel } from './DeployPanel'
 import { Card, Stat } from './ui'
 import { fetchUsdPrices } from '../lib/prices'
-import { bps, duration, num, pct, usd } from '../lib/format'
+import { bps, CATEGORY_LABEL, duration, num, pct, usd } from '../lib/format'
 import type { Cluster } from '../lib/cluster'
-
-const CATEGORY_LABEL: Record<PresetSpec['category'], string> = {
-    meme: 'Meme',
-    stock: 'Stocks',
-    icm: 'ICM',
-    rwa: 'RWA',
-    ai: 'AI',
-}
 
 function preferredQuote(spec: PresetSpec) {
     return spec.recommendedQuotes[0] ?? 'SOL'
@@ -179,7 +171,7 @@ export function StudioPage({ cluster }: { cluster: Cluster }) {
                             </div>
 
                             <Card title="Publish this preset" subtitle={result.compiled.quote.requiresBadge ? `${quoteSymbol} is a Token-2022 stock; Meteora has approved it (token badge) for DBC and DAMM v2.` : undefined}>
-                                <DeployPanel compiled={result.compiled} cluster={cluster} />
+                                <DeployPanel key={spec.id} compiled={result.compiled} cluster={cluster} />
                             </Card>
                         </>
                     )}

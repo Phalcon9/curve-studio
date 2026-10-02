@@ -1,17 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
+import { PublicKey } from '@solana/web3.js'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
 import { CurveSim, fromAtoms, toAtoms } from '@curve-studio/core'
 import { LineChart } from './LineChart'
-import { Card, Stat, short } from './ui'
+import { Badge, Card, ErrorNote, Progress, Stat, WalletButton, inputCls, primaryBtn } from './ui'
 import { loadConfig, type LoadedConfig } from '../lib/onchain'
 import { buildLaunchTx, SLIPPAGE_BPS } from '../lib/launch'
-import { bps, duration, num, pct, usd } from '../lib/format'
+import { fetchMarket } from '../lib/market'
+import { fetchTokenMetas } from '../lib/tokens'
+import { dataOf, useAsync } from '../lib/useAsync'
+import { bps, CATEGORY_LABEL, duration, num, pct, short, usd } from '../lib/format'
 import { explorerAccount, explorerTx, type Cluster } from '../lib/cluster'
 import { loadDeployments } from '../lib/deployments'
 import { navigate } from '../lib/route'
-
-type Load = { kind: 'idle' } | { kind: 'loading' } | { kind: 'error'; message: string } | { kind: 'ready'; data: LoadedConfig }
 
 type LaunchStatus =
     | { kind: 'idle' }
@@ -19,24 +20,10 @@ type LaunchStatus =
     | { kind: 'done'; pool: string; mint: string; sig: string }
     | { kind: 'error'; message: string }
 
-const inputCls = 'w-full rounded-md border border-line bg-surface px-2.5 py-1.5 text-sm text-ink outline-none focus:border-accent'
-
 export function LaunchPage({ initialConfig, cluster }: { initialConfig: string; cluster: Cluster }) {
     const { connection } = useConnection()
     const [address, setAddress] = useState(initialConfig)
-    const [load, setLoad] = useState<Load>({ kind: 'idle' })
-
-    useEffect(() => {
-        if (!initialConfig) return
-        let cancelled = false
-        setLoad({ kind: 'loading' })
-        loadConfig(connection, initialConfig)
-            .then((data) => !cancelled && setLoad({ kind: 'ready', data }))
-            .catch((e) => !cancelled && setLoad({ kind: 'error', message: e instanceof Error ? e.message : String(e) }))
-        return () => {
-            cancelled = true
-        }
-    }, [connection, initialConfig])
+    const { state: load } = useAsync(initialConfig ? `${connection.rpcEndpoint}:${initialConfig}` : null, () => loadConfig(connection, initialConfig))
 
     const mine = loadDeployments().filter((d) => d.cluster === cluster)
 
@@ -50,13 +37,19 @@ export function LaunchPage({ initialConfig, cluster }: { initialConfig: string; 
                 }}
             >
                 <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="DBC config address" className={`${inputCls} min-w-0 flex-1 font-mono`} />
-                <button className="h-9 rounded-lg bg-accent px-4 text-sm font-medium text-white disabled:opacity-40" disabled={!address.trim()}>
+                <button className={primaryBtn} disabled={!address.trim()}>
                     Open
                 </button>
             </form>
 
             {!initialConfig && (
                 <Card title="Pick a preset" subtitle="Paste any Meteora DBC config address, or open one you published">
+                    <p className="mb-2 text-sm text-ink-2">
+                        <button className="font-medium text-accent underline" onClick={() => navigate({ view: 'market' }, cluster)}>
+                            Browse the marketplace
+                        </button>{' '}
+                        for presets other authors published.
+                    </p>
                     {mine.length === 0 ? (
                         <p className="text-sm text-ink-2">
                             You haven't published a preset on {cluster === 'devnet' ? 'devnet' : 'mainnet'} from this browser yet.{' '}
@@ -87,11 +80,10 @@ export function LaunchPage({ initialConfig, cluster }: { initialConfig: string; 
 
             {load.kind === 'loading' && <p className="text-sm text-muted">Reading config from {cluster}…</p>}
             {load.kind === 'error' && (
-                <div className="rounded-xl border border-line bg-surface p-4 text-sm">
-                    <div className="font-medium text-critical">✕ Couldn't load this config</div>
-                    <p className="mt-1 text-ink-2">{load.message}</p>
+                <ErrorNote title="Couldn't load this config">
+                    {load.message}
                     {cluster === 'devnet' && <p className="mt-1 text-xs text-muted">If it was published on mainnet, switch the network toggle.</p>}
-                </div>
+                </ErrorNote>
             )}
             {load.kind === 'ready' && <LoadedView data={load.data} cluster={cluster} />}
         </div>
@@ -114,9 +106,22 @@ function LoadedView({ data, cluster }: { data: LoadedConfig; cluster: Cluster })
         return { sim, summary, fill, window, sniper: sim.sniperTable(500, seconds) }
     }, [config, quote])
 
+    const { connection } = useConnection()
+    const market = useAsync(connection.rpcEndpoint, () => fetchMarket(connection, cluster))
+    const entry = dataOf(market.state)?.find((e) => e.listing.config === data.address.toBase58())
+
     const s = view.summary
     return (
         <>
+            <div>
+                <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-xl font-semibold text-ink">{entry?.listing.name ?? 'DBC config'}</h2>
+                    {entry && <Badge>{CATEGORY_LABEL[entry.listing.category]}</Badge>}
+                    <Badge>{quote.symbol}</Badge>
+                    {!entry && market.state.kind === 'ready' && <span className="text-xs text-muted">not listed on the marketplace</span>}
+                </div>
+                {entry?.listing.tagline && <p className="mt-0.5 text-sm text-ink-2">{entry.listing.tagline}</p>}
+            </div>
             <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
                 <Stat label="Start market cap" value={money(s.startMcapUsd)} sub={`${money(s.startPriceUsd)} / token`} />
                 <Stat label="Graduates at" value={money(s.gradMcapUsd)} sub={`${s.priceMultiple.toFixed(1)}× start price`} />
@@ -156,7 +161,7 @@ function LoadedView({ data, cluster }: { data: LoadedConfig; cluster: Cluster })
                             <dt className="text-muted">Author</dt>
                             <dd className="text-right">
                                 <a className="font-mono text-ink-2 underline" href={explorerAccount(config.feeClaimer.toBase58(), cluster)} target="_blank" rel="noreferrer">
-                                    {short(config.feeClaimer.toBase58())}
+                                    {entry?.authorName ?? short(config.feeClaimer.toBase58())}
                                 </a>
                             </dd>
                             <dt className="text-muted">Quote</dt>
@@ -256,14 +261,8 @@ function LaunchForm({ data, sim, cluster }: { data: LoadedConfig; sim: CurveSim;
                     </p>
                 )}
                 <div className="flex flex-wrap items-center gap-2 pt-1">
-                    <WalletMultiButton
-                        style={{ height: 36, fontSize: 14, borderRadius: 8, background: 'var(--surface-2)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}
-                    />
-                    <button
-                        onClick={launch}
-                        disabled={!publicKey || !valid || status.kind === 'busy'}
-                        className="h-9 rounded-lg bg-accent px-4 font-medium text-white disabled:cursor-not-allowed disabled:opacity-40"
-                    >
+                    <WalletButton />
+                    <button onClick={launch} disabled={!publicKey || !valid || status.kind === 'busy'} className={primaryBtn}>
                         {status.kind === 'busy' ? `${status.step}…` : 'Launch'}
                     </button>
                 </div>
@@ -281,9 +280,14 @@ function LaunchForm({ data, sim, cluster }: { data: LoadedConfig; sim: CurveSim;
                                     {short(status.pool)}
                                 </a>
                             </div>
-                            <a className="text-muted underline" href={explorerTx(status.sig, cluster)} target="_blank" rel="noreferrer">
-                                View transaction
-                            </a>
+                            <div className="flex flex-wrap gap-3">
+                                <button className="font-medium text-accent underline" onClick={() => navigate({ view: 'token', pool: status.pool }, cluster)}>
+                                    Open token page →
+                                </button>
+                                <a className="text-muted underline" href={explorerTx(status.sig, cluster)} target="_blank" rel="noreferrer">
+                                    View transaction
+                                </a>
+                            </div>
                         </div>
                     </div>
                 )}
@@ -294,8 +298,14 @@ function LaunchForm({ data, sim, cluster }: { data: LoadedConfig; sim: CurveSim;
 }
 
 function LaunchedList({ data, cluster }: { data: LoadedConfig; cluster: Cluster }) {
-    const { pools } = data
+    const { connection } = useConnection()
+    const { pools, config } = data
     const graduated = pools.filter((p) => p.migrated).length
+    const top = pools.slice(0, 25)
+    const metas = useAsync(`${connection.rpcEndpoint}:${data.address.toBase58()}:metas`, () =>
+        fetchTokenMetas(connection, top.map((p) => new PublicKey(p.baseMint)), config.tokenType)
+    )
+    const symbols = dataOf(metas.state)
     return (
         <Card
             title="Launched on this preset"
@@ -311,20 +321,17 @@ function LaunchedList({ data, cluster }: { data: LoadedConfig; cluster: Cluster 
                         </tr>
                     </thead>
                     <tbody>
-                        {pools.slice(0, 25).map((p) => (
+                        {top.map((p) => (
                             <tr key={p.address} className="border-t border-line">
                                 <td className="py-1.5">
-                                    <a className="font-mono text-ink-2 underline" href={explorerAccount(p.baseMint, cluster)} target="_blank" rel="noreferrer">
-                                        {short(p.baseMint)}
-                                    </a>
+                                    <button className="text-ink-2 underline" onClick={() => navigate({ view: 'token', pool: p.address }, cluster)}>
+                                        {symbols?.get(p.baseMint)?.symbol || short(p.baseMint)}
+                                    </button>
                                 </td>
                                 <td className="py-1.5 font-mono text-muted">{short(p.creator)}</td>
                                 <td className="py-1.5">
-                                    <div className="flex items-center justify-end gap-2">
-                                        <div className="h-1.5 w-20 overflow-hidden rounded-full bg-surface-2" aria-hidden>
-                                            <div className="h-full rounded-full" style={{ width: `${p.progress * 100}%`, background: 'var(--series-1)' }} />
-                                        </div>
-                                        <span className="tnum w-20 text-right text-ink-2">{p.migrated ? '✓ Graduated' : pct(p.progress * 100)}</span>
+                                    <div className="flex justify-end">
+                                        <Progress value={p.progress} label={p.migrated ? '✓ Graduated' : pct(p.progress * 100)} />
                                     </div>
                                 </td>
                             </tr>

@@ -36,7 +36,7 @@ export type LoadedConfig = {
 // devnet stand-in mint -> mainnet mint, so devnet quotes can borrow a mainnet price
 const MAINNET_EQUIVALENT = Object.fromEntries(Object.entries(DEVNET_MINT_OVERRIDES).map(([main, dev]) => [dev, main]))
 
-async function resolveQuote(connection: Connection, mint: PublicKey): Promise<QuoteInfo> {
+export async function resolveQuote(connection: Connection, mint: PublicKey): Promise<QuoteInfo> {
     const account = await connection.getParsedAccountInfo(mint)
     const decimals = (account.value?.data as ParsedAccountData | undefined)?.parsed?.info?.decimals
     if (typeof decimals !== 'number') throw new Error(`quote mint ${mint.toBase58()} not found`)

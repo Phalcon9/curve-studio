@@ -1,12 +1,23 @@
 import { useEffect, useState } from 'react'
 import type { Cluster } from './cluster'
 
-export type Route = { view: 'studio' } | { view: 'launch'; config: string }
+export type Route =
+    | { view: 'studio' }
+    | { view: 'market' }
+    | { view: 'launch'; config: string }
+    | { view: 'token'; pool: string }
+    | { view: 'earnings'; wallet?: string }
 
 function parse(): Route {
     const p = new URLSearchParams(location.search)
     const config = p.get('launch')
-    return config !== null ? { view: 'launch', config } : { view: 'studio' }
+    if (config !== null) return { view: 'launch', config }
+    const pool = p.get('token')
+    if (pool !== null) return { view: 'token', pool }
+    const view = p.get('view')
+    if (view === 'market') return { view }
+    if (view === 'earnings') return { view, wallet: p.get('wallet') ?? undefined }
+    return { view: 'studio' }
 }
 
 export function clusterFromUrl(): Cluster | null {
@@ -14,17 +25,24 @@ export function clusterFromUrl(): Cluster | null {
     return c === 'devnet' || c === 'mainnet-beta' ? c : null
 }
 
-export function launchUrl(config: string, cluster: Cluster): string {
-    return `${location.origin}${location.pathname}?launch=${config}&cluster=${cluster}`
+function search(route: Route, cluster: Cluster): string {
+    const p = new URLSearchParams()
+    if (route.view === 'launch') p.set('launch', route.config)
+    else if (route.view === 'token') p.set('token', route.pool)
+    else if (route.view !== 'studio') p.set('view', route.view)
+    if (route.view === 'earnings' && route.wallet) p.set('wallet', route.wallet)
+    p.set('cluster', cluster)
+    return `?${p}`
 }
 
+export const routeUrl = (route: Route, cluster: Cluster) => `${location.origin}${location.pathname}${search(route, cluster)}`
+
+export const launchUrl = (config: string, cluster: Cluster) => routeUrl({ view: 'launch', config }, cluster)
+
 export function navigate(route: Route, cluster: Cluster) {
-    const url =
-        route.view === 'launch'
-            ? `?launch=${route.config}&cluster=${cluster}`
-            : location.pathname
-    history.pushState(null, '', url)
+    history.pushState(null, '', search(route, cluster))
     dispatchEvent(new PopStateEvent('popstate'))
+    scrollTo({ top: 0 })
 }
 
 export function useRoute(): Route {

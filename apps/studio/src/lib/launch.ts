@@ -2,6 +2,7 @@ import { Connection, Keypair, PublicKey, Transaction } from '@solana/web3.js'
 import { DynamicBondingCurveClient, deriveDbcPoolAddress } from '@meteora-ag/dynamic-bonding-curve-sdk'
 import { CurveSim, toAtoms } from '@curve-studio/core'
 import type { LoadedConfig } from './onchain'
+import { referralAccountFor } from './trade'
 
 export type TokenDetails = {
     name: string
@@ -29,15 +30,15 @@ export async function buildLaunchTx(
     let firstBuyParam
     if (firstBuy > 0) {
         const buyAmount = toAtoms(firstBuy, loaded.quote.decimals)
+        const minFee = loaded.config.enableFirstSwapWithMinFee === 1
         const sim = CurveSim.fromOnChain(loaded.config, loaded.quote.decimals, loaded.quote.usdPrice ?? 1)
-        const { outputAmount } = sim.quoteBuy(buyAmount, {
-            firstSwapMinFee: loaded.config.enableFirstSwapWithMinFee === 1,
-        })
+        const { outputAmount } = sim.quoteBuy(buyAmount, { firstSwapMinFee: minFee })
         firstBuyParam = {
             buyer: creator,
             buyAmount,
             minimumAmountOut: outputAmount.muln(10_000 - SLIPPAGE_BPS).divn(10_000),
-            referralTokenAccount: null,
+            // the program only grants the min-fee first buy when no referral account is passed
+            referralTokenAccount: minFee ? null : await referralAccountFor(connection, loaded.config, baseMint.publicKey, false),
         }
     }
 

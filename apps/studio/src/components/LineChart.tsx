@@ -102,7 +102,14 @@ export function LineChart({ data, xFormat, yFormat, xLabel, title, height = 240,
                 {markerX && (
                     <g>
                         <line x1={geo.sx(markerX.x)} x2={geo.sx(markerX.x)} y1={PAD.top} y2={geo.sy(0)} stroke="var(--axis)" />
-                        <text x={geo.sx(markerX.x) + 4} y={PAD.top + 10} fontSize={11} fill="var(--text-muted)">
+                        {/* flip the label to the left of the line when it would run off the right edge */}
+                        <text
+                            x={geo.sx(markerX.x) + (geo.sx(markerX.x) > width - PAD.right - 80 ? -4 : 4)}
+                            y={PAD.top + 10}
+                            textAnchor={geo.sx(markerX.x) > width - PAD.right - 80 ? 'end' : 'start'}
+                            fontSize={11}
+                            fill="var(--text-muted)"
+                        >
                             {markerX.label}
                         </text>
                     </g>
