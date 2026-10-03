@@ -3,6 +3,7 @@ import { PublicKey } from '@solana/web3.js'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { CurveSim, fromAtoms, LISTING_LIMITS, type ListingMeta, type PresetCategory } from '@curve-studio/core'
 import { Badge, Card, ErrorNote, WalletButton, inputCls, primaryBtn, secondaryBtn } from './ui'
+import { CATEGORY_TONE, hue } from '../lib/theme'
 import { assertOwnsConfig, buildListingTx, countLaunches, fetchMarket, type MarketEntry } from '../lib/market'
 import { loadDeployments } from '../lib/deployments'
 import { prepare, signAndSendAll, errorMessage } from '../lib/send'
@@ -46,7 +47,14 @@ export function MarketplacePage({ cluster }: { cluster: Cluster }) {
                             role="radio"
                             aria-checked={category === c}
                             onClick={() => setCategory(c)}
-                            className={`rounded-full border px-3 py-1 text-xs ${category === c ? 'border-accent text-ink' : 'border-line text-ink-2 hover:border-ink-2/40'}`}
+                            className={
+                                category === c
+                                    ? c === 'all'
+                                        ? 'brand-bg rounded-full px-3.5 py-1 text-xs font-semibold text-white shadow-[0_6px_20px_-8px_var(--glow)]'
+                                        : 'chip px-3.5 py-1 text-xs font-semibold'
+                                    : 'rounded-full border border-line bg-surface-2 px-3.5 py-1 text-xs text-ink-2 transition hover:border-accent/50 hover:text-ink'
+                            }
+                            style={c !== 'all' && category === c ? hue(CATEGORY_TONE[c]) : undefined}
                         >
                             {c === 'all' ? 'All' : CATEGORY_LABEL[c]}
                         </button>
@@ -66,7 +74,7 @@ export function MarketplacePage({ cluster }: { cluster: Cluster }) {
             {state.kind === 'loading' && !entries && <p className="text-sm text-muted">Reading the preset registry from {cluster}…</p>}
 
             {entries && shown.length === 0 && (
-                <div className="rounded-xl border border-line bg-surface p-6 text-center text-sm text-ink-2">
+                <div className="glass rounded-2xl border border-dashed border-accent/40 p-10 text-center text-sm text-ink-2">
                     {entries.length === 0 ? `No presets listed on ${cluster === 'devnet' ? 'devnet' : 'mainnet'} yet.` : 'No presets in this category yet.'}{' '}
                     <button className="font-medium text-accent underline" onClick={() => navigate({ view: 'studio' }, cluster)}>
                         Design and publish one
@@ -119,17 +127,17 @@ function PresetCard({ entry, cluster, mine }: { entry: MarketEntry; cluster: Clu
     }, [config, quote])
 
     return (
-        <article className="flex flex-col rounded-xl border border-line bg-surface p-4">
+        <article className="tile glass flex flex-col rounded-2xl p-5" style={hue(CATEGORY_TONE[listing.category])}>
             <div className="flex items-start justify-between gap-2">
-                <h2 className="font-medium text-ink">{listing.name}</h2>
+                <h2 className="font-display text-lg font-semibold text-ink">{listing.name}</h2>
                 <div className="flex shrink-0 gap-1">
-                    <Badge>{CATEGORY_LABEL[listing.category]}</Badge>
+                    <Badge tone={CATEGORY_TONE[listing.category]}>{CATEGORY_LABEL[listing.category]}</Badge>
                     <Badge>{quote.symbol}</Badge>
                 </div>
             </div>
             {listing.tagline && <p className="mt-1 text-xs leading-snug text-ink-2">{listing.tagline}</p>}
 
-            <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+            <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-1.5 rounded-xl border border-line bg-black/20 p-3 text-xs">
                 <dt className="text-muted">Market cap</dt>
                 <dd className="tnum text-right text-ink">{summary ? `${money(summary.startMcapUsd)} → ${money(summary.gradMcapUsd)}` : '–'}</dd>
                 <dt className="text-muted">Raise to graduate</dt>
@@ -202,8 +210,8 @@ function ListExisting({ cluster, onListed }: { cluster: Cluster; onListed: () =>
     const valid = config.trim().length > 0 && name.trim().length > 0
 
     return (
-        <details className="rounded-xl border border-line bg-surface p-4 text-sm">
-            <summary className="cursor-pointer font-semibold text-ink">Already run a DBC config? List it here</summary>
+        <details className="glass rounded-2xl border border-line p-5 text-sm">
+            <summary className="cursor-pointer font-display font-semibold text-ink">Already run a DBC config? List it here</summary>
             <p className="mt-1 text-xs text-muted">
                 Any Meteora DBC config can be listed by its fee claimer, including ones created by another launchpad. The listing is one memo transaction signed by
                 that wallet; the economics shown come from the config itself.

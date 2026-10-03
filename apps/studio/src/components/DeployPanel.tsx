@@ -138,7 +138,7 @@ export function DeployPanel({ compiled, cluster }: { compiled: CompiledPreset | 
             </div>
             {unavailable && <p className="text-xs text-muted">{compiled!.quote.symbol} does not exist on {cluster}. Switch to mainnet or pick SOL / USDC.</p>}
             {status.kind === 'done' && (
-                <div className="rounded-md border border-line bg-surface-2 p-2.5 text-xs">
+                <div className="rounded-xl border border-line bg-surface-2 p-3 text-xs">
                     <div className="font-medium text-good">✓ Config published{status.listed ? ' and listed' : ''}</div>
                     {status.listingError && <div className="mt-1 text-critical">Listing failed ({status.listingError}). List it from the Marketplace page.</div>}
                     <div className="mt-1 break-all text-ink-2">

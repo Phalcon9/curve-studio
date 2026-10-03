@@ -65,9 +65,15 @@ function TokenDetails({ view, cluster, onTraded }: { view: TokenView; cluster: C
             <div className="flex flex-wrap items-end justify-between gap-2">
                 <div>
                     <div className="flex items-center gap-2">
-                        <h2 className="text-xl font-semibold text-ink">{symbol}</h2>
+                        <h2 className="font-display text-2xl font-bold tracking-tight text-ink">{symbol}</h2>
                         {meta?.name && <span className="text-ink-2">{meta.name}</span>}
-                        {view.migrated ? <Badge>Graduated</Badge> : view.complete ? <Badge>Migrating</Badge> : <Badge>On the curve</Badge>}
+                        {view.migrated ? (
+                            <Badge tone="var(--good)">Graduated</Badge>
+                        ) : view.complete ? (
+                            <Badge tone="var(--series-4)">Migrating</Badge>
+                        ) : (
+                            <Badge tone="var(--series-3)">On the curve</Badge>
+                        )}
                     </div>
                     <p className="mt-0.5 text-xs text-muted">
                         <a className="font-mono underline" href={explorerAccount(s.baseMint.toBase58(), cluster)} target="_blank" rel="noreferrer">
@@ -213,12 +219,14 @@ function TradeBox({ view, symbol, cluster, onTraded }: { view: TokenView; symbol
 
     const tooMuch = spendable !== undefined && amountIn.gt(spendable)
     const tab = (s: Side) =>
-        `flex-1 rounded-md py-1.5 text-sm ${side === s ? 'bg-surface-2 font-medium text-ink' : 'text-muted hover:text-ink-2'}`
+        `flex-1 rounded-lg py-1.5 text-sm font-medium transition ${
+            side === s ? (s === 'buy' ? 'bg-emerald-400/15 text-emerald-300' : 'bg-rose-400/15 text-rose-300') : 'text-muted hover:bg-white/5 hover:text-ink-2'
+        }`
 
     return (
         <Card title={`Trade ${symbol}`} subtitle={`On the bonding curve, priced in ${quote.symbol}`}>
             <div className="space-y-3 text-sm">
-                <div className="flex rounded-lg border border-line p-0.5" role="radiogroup" aria-label="Side">
+                <div className="flex gap-0.5 rounded-xl border border-line bg-black/20 p-1" role="radiogroup" aria-label="Side">
                     {(['buy', 'sell'] as const).map((s) => (
                         <button key={s} role="radio" aria-checked={side === s} className={tab(s)} onClick={() => (setSide(s), setInput(''), setStatus({ kind: 'idle' }))}>
                             {s === 'buy' ? 'Buy' : 'Sell'}
@@ -261,7 +269,7 @@ function TradeBox({ view, symbol, cluster, onTraded }: { view: TokenView; symbol
                 <div className="flex items-center gap-2 text-xs text-muted">
                     Max slippage
                     {SLIPPAGES.map((b) => (
-                        <button key={b} onClick={() => setSlippage(b)} className={`rounded px-1.5 py-0.5 ${slippage === b ? 'bg-surface-2 text-ink' : 'hover:text-ink-2'}`}>
+                        <button key={b} onClick={() => setSlippage(b)} className={`rounded-full px-2 py-0.5 transition ${slippage === b ? 'bg-accent/20 font-medium text-ink' : 'hover:bg-white/5 hover:text-ink-2'}`}>
                             {b / 100}%
                         </button>
                     ))}

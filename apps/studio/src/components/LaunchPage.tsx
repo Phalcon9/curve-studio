@@ -4,9 +4,11 @@ import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { CurveSim, fromAtoms, toAtoms } from '@curve-studio/core'
 import { LineChart } from './LineChart'
 import { Badge, Card, ErrorNote, Progress, Stat, WalletButton, inputCls, primaryBtn } from './ui'
+import { CATEGORY_TONE } from '../lib/theme'
 import { loadConfig, type LoadedConfig } from '../lib/onchain'
 import { buildLaunchTx, SLIPPAGE_BPS } from '../lib/launch'
 import { fetchMarket } from '../lib/market'
+import { errorMessage, signAndSendAll } from '../lib/send'
 import { fetchTokenMetas } from '../lib/tokens'
 import { dataOf, useAsync } from '../lib/useAsync'
 import { bps, CATEGORY_LABEL, duration, num, pct, short, usd } from '../lib/format'
@@ -115,8 +117,8 @@ function LoadedView({ data, cluster }: { data: LoadedConfig; cluster: Cluster })
         <>
             <div>
                 <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-xl font-semibold text-ink">{entry?.listing.name ?? 'DBC config'}</h2>
-                    {entry && <Badge>{CATEGORY_LABEL[entry.listing.category]}</Badge>}
+                    <h2 className="font-display text-2xl font-bold tracking-tight text-ink">{entry?.listing.name ?? 'DBC config'}</h2>
+                    {entry && <Badge tone={CATEGORY_TONE[entry.listing.category]}>{CATEGORY_LABEL[entry.listing.category]}</Badge>}
                     <Badge>{quote.symbol}</Badge>
                     {!entry && market.state.kind === 'ready' && <span className="text-xs text-muted">not listed on the marketplace</span>}
                 </div>
@@ -209,14 +211,10 @@ function LaunchForm({ data, sim, cluster }: { data: LoadedConfig; sim: CurveSim;
         try {
             setStatus({ kind: 'busy', step: 'Building transaction' })
             const { tx, baseMint, pool } = await buildLaunchTx(connection, data, { name, symbol, uri }, firstBuy, publicKey)
-            setStatus({ kind: 'busy', step: 'Waiting for wallet' })
-            const signed = await signTransaction(tx)
-            setStatus({ kind: 'busy', step: 'Confirming' })
-            const sig = await connection.sendRawTransaction(signed.serialize())
-            await connection.confirmTransaction({ signature: sig, blockhash: tx.recentBlockhash!, lastValidBlockHeight: tx.lastValidBlockHeight! }, 'confirmed')
+            const [sig] = await signAndSendAll(connection, { signTransaction }, [tx], (step) => setStatus({ kind: 'busy', step }))
             setStatus({ kind: 'done', pool: pool.toBase58(), mint: baseMint.publicKey.toBase58(), sig })
         } catch (e) {
-            setStatus({ kind: 'error', message: e instanceof Error ? e.message : String(e) })
+            setStatus({ kind: 'error', message: errorMessage(e) })
         }
     }
 
@@ -267,7 +265,7 @@ function LaunchForm({ data, sim, cluster }: { data: LoadedConfig; sim: CurveSim;
                     </button>
                 </div>
                 {status.kind === 'done' && (
-                    <div className="rounded-md border border-line bg-surface-2 p-2.5 text-xs">
+                    <div className="rounded-xl border border-line bg-surface-2 p-3 text-xs">
                         <div className="font-medium text-good">✓ {symbol} is live on the curve</div>
                         <div className="mt-1 space-y-0.5 text-ink-2">
                             <div>

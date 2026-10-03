@@ -73,7 +73,7 @@ function AuthorEarnings({ wallet, cluster, canClaim }: { wallet: PublicKey; clus
 
     return (
         <section className="space-y-3">
-            <h2 className="text-base font-semibold text-ink">As preset author</h2>
+            <h2 className="brand-text font-display text-lg font-bold">As preset author</h2>
             {configs.length === 0 ? (
                 <p className="text-sm text-ink-2">
                     This wallet isn't the fee claimer of any DBC config on {cluster === 'devnet' ? 'devnet' : 'mainnet'}.{' '}
@@ -145,7 +145,7 @@ function CreatorEarnings({ wallet, cluster, canClaim }: { wallet: PublicKey; clu
     const totalUsd = open.reduce((s, p) => s + usdOf(p.claim, p.quote), 0)
     return (
         <section className="space-y-3">
-            <h2 className="text-base font-semibold text-ink">As token creator</h2>
+            <h2 className="brand-text font-display text-lg font-bold">As token creator</h2>
             <Card
                 title={`${pools.length} token${pools.length === 1 ? '' : 's'} created`}
                 subtitle={`${open.length} with creator fees to claim${totalUsd > 0 ? ` · ≈ ${usd(totalUsd)}` : ''}`}

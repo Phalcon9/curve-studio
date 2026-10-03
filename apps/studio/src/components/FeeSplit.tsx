@@ -23,7 +23,7 @@ export function FeeSplit({ volumeUsd, feeBps, creatorPct, hasReferral }: { volum
 
     return (
         <div className="space-y-3">
-            <div className="flex h-6 w-full gap-[2px]" role="img" aria-label="Trading fee split">
+            <div className="flex h-6 w-full gap-[3px]" role="img" aria-label="Trading fee split">
                 {slices.map((s, i) => (
                     <div
                         key={s.key}
@@ -33,7 +33,8 @@ export function FeeSplit({ volumeUsd, feeBps, creatorPct, hasReferral }: { volum
                             width: `${(s.value / total) * 100}%`,
                             background: s.color,
                             opacity: hover && hover !== s.key ? 0.55 : 1,
-                            borderRadius: `${i === 0 ? 4 : 0}px ${i === slices.length - 1 ? 4 : 0}px ${i === slices.length - 1 ? 4 : 0}px ${i === 0 ? 4 : 0}px`,
+                            borderRadius: `${i === 0 ? 8 : 2}px ${i === slices.length - 1 ? 8 : 2}px ${i === slices.length - 1 ? 8 : 2}px ${i === 0 ? 8 : 2}px`,
+                            boxShadow: `0 0 14px -4px ${s.color}`,
                         }}
                         title={`${s.label}: ${usd(s.value)}`}
                     />
@@ -44,7 +45,7 @@ export function FeeSplit({ volumeUsd, feeBps, creatorPct, hasReferral }: { volum
                     {slices.map((s) => (
                         <tr key={s.key} className={hover === s.key ? 'bg-surface-2' : ''}>
                             <td className="py-0.5">
-                                <span className="mr-2 inline-block h-2.5 w-2.5 rounded-sm align-middle" style={{ background: s.color }} />
+                                <span className="mr-2 inline-block h-2.5 w-2.5 rounded-full align-middle" style={{ background: s.color, boxShadow: `0 0 8px ${s.color}` }} />
                                 <span className="text-ink-2">{s.label}</span>
                             </td>
                             <td className="tnum py-0.5 text-right text-muted">{((s.value / total) * 100).toFixed(0)}%</td>

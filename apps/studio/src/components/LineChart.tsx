@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 
 export type XY = { x: number; y: number }
 
@@ -33,6 +33,8 @@ export function LineChart({ data, xFormat, yFormat, xLabel, title, height = 240,
     const ref = useRef<SVGSVGElement>(null)
     const [width, setWidth] = useState(640)
     const [hover, setHover] = useState<number | null>(null)
+    // gradient ids must be valid in url(#…), so strip whatever punctuation React puts in useId
+    const gid = `lc${useId().replace(/[^\w-]/g, '')}`
 
     useEffect(() => {
         if (!ref.current) return
@@ -81,6 +83,18 @@ export function LineChart({ data, xFormat, yFormat, xLabel, title, height = 240,
                 onPointerLeave={() => setHover(null)}
                 className="block touch-none select-none"
             >
+                {/* userSpaceOnUse so a perfectly flat line (zero-height bbox) still gets painted */}
+                <defs>
+                    <linearGradient id={`${gid}-line`} gradientUnits="userSpaceOnUse" x1={PAD.left} x2={width - PAD.right} y1={0} y2={0}>
+                        <stop offset="0%" stopColor="#a78bfa" />
+                        <stop offset="55%" stopColor="#e879f9" />
+                        <stop offset="100%" stopColor="#fb923c" />
+                    </linearGradient>
+                    <linearGradient id={`${gid}-area`} gradientUnits="userSpaceOnUse" x1={0} x2={0} y1={PAD.top} y2={geo.sy(0)}>
+                        <stop offset="0%" stopColor="#c026d3" stopOpacity={0.38} />
+                        <stop offset="100%" stopColor="#7c3aed" stopOpacity={0} />
+                    </linearGradient>
+                </defs>
                 {geo.yTicks.map((t) => (
                     <g key={t}>
                         <line x1={PAD.left} x2={width - PAD.right} y1={geo.sy(t)} y2={geo.sy(t)} stroke="var(--grid)" />
@@ -101,33 +115,43 @@ export function LineChart({ data, xFormat, yFormat, xLabel, title, height = 240,
 
                 {markerX && (
                     <g>
-                        <line x1={geo.sx(markerX.x)} x2={geo.sx(markerX.x)} y1={PAD.top} y2={geo.sy(0)} stroke="var(--axis)" />
+                        <line x1={geo.sx(markerX.x)} x2={geo.sx(markerX.x)} y1={PAD.top} y2={geo.sy(0)} stroke="var(--series-3)" strokeDasharray="4 4" opacity={0.8} />
                         {/* flip the label to the left of the line when it would run off the right edge */}
                         <text
                             x={geo.sx(markerX.x) + (geo.sx(markerX.x) > width - PAD.right - 80 ? -4 : 4)}
                             y={PAD.top + 10}
                             textAnchor={geo.sx(markerX.x) > width - PAD.right - 80 ? 'end' : 'start'}
                             fontSize={11}
-                            fill="var(--text-muted)"
+                            fontWeight={600}
+                            fill="var(--series-3)"
                         >
                             {markerX.label}
                         </text>
                     </g>
                 )}
 
-                <path d={geo.area} fill="var(--series-1)" opacity={0.1} />
-                <path d={geo.line} fill="none" stroke="var(--series-1)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+                <path d={geo.area} fill={`url(#${gid}-area)`} />
+                <path
+                    d={geo.line}
+                    fill="none"
+                    stroke={`url(#${gid}-line)`}
+                    strokeWidth={2.5}
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                    style={{ filter: 'drop-shadow(0 0 6px rgba(217, 70, 239, 0.55))' }}
+                />
 
                 {h && (
                     <g pointerEvents="none">
                         <line x1={geo.sx(h.x)} x2={geo.sx(h.x)} y1={PAD.top} y2={geo.sy(0)} stroke="var(--axis)" />
-                        <circle cx={geo.sx(h.x)} cy={geo.sy(h.y)} r={5} fill="var(--series-1)" stroke="var(--surface-1)" strokeWidth={2} />
+                        <circle cx={geo.sx(h.x)} cy={geo.sy(h.y)} r={11} fill="#e879f9" opacity={0.25} />
+                        <circle cx={geo.sx(h.x)} cy={geo.sy(h.y)} r={5} fill="white" stroke="#e879f9" strokeWidth={2.5} />
                     </g>
                 )}
             </svg>
             {h && (
                 <div
-                    className="pointer-events-none absolute top-1 rounded-md border border-line bg-surface px-2.5 py-1.5 text-xs shadow-sm"
+                    className="glass pointer-events-none absolute top-1 rounded-lg border border-line px-2.5 py-1.5 text-xs"
                     style={{
                         left: Math.min(geo.sx(h.x) + 10, width - 150),
                     }}

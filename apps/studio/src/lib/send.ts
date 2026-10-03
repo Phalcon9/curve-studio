@@ -44,18 +44,39 @@ export async function signAndSendAll(
     for (const [i, tx] of signed.entries()) {
         onStep(signed.length > 1 ? `Confirming ${i + 1}/${signed.length}` : 'Confirming')
         try {
-            const sig = await connection.sendRawTransaction(tx.serialize())
-            const { value } = await connection.confirmTransaction(
-                { signature: sig, blockhash: tx.recentBlockhash!, lastValidBlockHeight: tx.lastValidBlockHeight! },
-                'confirmed'
-            )
-            if (value.err) throw new Error(`transaction failed: ${JSON.stringify(value.err)}`)
-            sent.push(sig)
+            sent.push(await sendAndConfirm(connection, tx.serialize(), tx.lastValidBlockHeight!))
         } catch (e) {
             throw new SendError(e instanceof Error ? e.message : String(e), sent)
         }
     }
     return sent
+}
+
+const POLL_MS = 1500
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+const landed = (s: { confirmationStatus?: string } | null) => s?.confirmationStatus === 'confirmed' || s?.confirmationStatus === 'finalized'
+
+/**
+ * Send, then poll for the signature and re-broadcast until the blockhash
+ * expires. web3.js' confirmTransaction waits on a websocket notification that
+ * public RPCs drop, which reported landed transactions as expired.
+ */
+async function sendAndConfirm(connection: Connection, raw: Buffer, lastValidBlockHeight: number): Promise<string> {
+    const sig = await connection.sendRawTransaction(raw, { maxRetries: 0 })
+    for (;;) {
+        await sleep(POLL_MS)
+        const [status] = (await connection.getSignatureStatuses([sig])).value
+        if (status?.err) throw new Error(`transaction failed: ${JSON.stringify(status.err)}`)
+        if (landed(status)) return sig
+        if ((await connection.getBlockHeight('confirmed')) > lastValidBlockHeight) {
+            // it can land in the last blocks before expiry; check history before giving up
+            const [final] = (await connection.getSignatureStatuses([sig], { searchTransactionHistory: true })).value
+            if (final?.err) throw new Error(`transaction failed: ${JSON.stringify(final.err)}`)
+            if (landed(final)) return sig
+            throw new Error('The transaction expired before the network confirmed it, so nothing was charged. Try again.')
+        }
+        connection.sendRawTransaction(raw, { skipPreflight: true, maxRetries: 0 }).catch(() => {})
+    }
 }
 
 export function errorMessage(e: unknown): string {

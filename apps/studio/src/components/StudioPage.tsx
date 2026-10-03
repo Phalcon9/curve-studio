@@ -12,7 +12,8 @@ import { Editor } from './Editor'
 import { LineChart } from './LineChart'
 import { FeeSplit } from './FeeSplit'
 import { DeployPanel } from './DeployPanel'
-import { Card, Stat } from './ui'
+import { Badge, Card, Stat } from './ui'
+import { CATEGORY_TONE, hue } from '../lib/theme'
 import { fetchUsdPrices } from '../lib/prices'
 import { bps, CATEGORY_LABEL, duration, num, pct, usd } from '../lib/format'
 import type { Cluster } from '../lib/cluster'
@@ -80,11 +81,12 @@ export function StudioPage({ cluster }: { cluster: Cluster }) {
                             key={p.id}
                             onClick={() => loadPreset(p)}
                             aria-pressed={active}
-                            className={`rounded-xl border bg-surface p-3 text-left transition-colors ${active ? 'border-accent' : 'border-line hover:border-ink-2/40'}`}
+                            className="tile glass rounded-2xl p-3.5 text-left"
+                            style={hue(CATEGORY_TONE[p.category])}
                         >
                             <div className="flex items-center justify-between gap-2">
-                                <span className="font-medium text-ink">{p.name}</span>
-                                <span className="rounded bg-surface-2 px-1.5 py-0.5 text-[11px] text-ink-2">{CATEGORY_LABEL[p.category]}</span>
+                                <span className="font-display font-semibold text-ink">{p.name}</span>
+                                <Badge tone={CATEGORY_TONE[p.category]}>{CATEGORY_LABEL[p.category]}</Badge>
                             </div>
                             <p className="mt-1 text-xs leading-snug text-ink-2">{p.tagline}</p>
                         </button>
@@ -93,7 +95,7 @@ export function StudioPage({ cluster }: { cluster: Cluster }) {
             </div>
 
             <div className="grid gap-6 lg:grid-cols-[22rem_1fr]">
-                <aside className="h-fit rounded-xl border border-line bg-surface p-4 lg:sticky lg:top-4">
+                <aside className="glass h-fit rounded-2xl border border-line p-5 lg:sticky lg:top-4">
                     <Editor
                         spec={spec}
                         onChange={setSpec}
@@ -108,7 +110,7 @@ export function StudioPage({ cluster }: { cluster: Cluster }) {
 
                 <main className="min-w-0 space-y-4">
                     {!result.ok ? (
-                        <div className="rounded-xl border border-critical/40 bg-surface p-4 text-sm">
+                        <div className="glass rounded-2xl border border-critical/40 p-4 text-sm">
                             <div className="font-medium text-critical">✕ This configuration would be rejected on-chain</div>
                             <p className="mt-1 text-ink-2">{result.error}</p>
                         </div>

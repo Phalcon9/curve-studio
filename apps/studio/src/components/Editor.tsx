@@ -15,7 +15,7 @@ type Props = {
 function Section({ title, children }: { title: string; children: ReactNode }) {
     return (
         <fieldset className="space-y-2.5 border-t border-line pt-3 first:border-t-0 first:pt-0">
-            <legend className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">{title}</legend>
+            <legend className="brand-text mb-1 font-display text-xs font-bold uppercase tracking-wider">{title}</legend>
             {children}
         </fieldset>
     )
@@ -41,7 +41,7 @@ function Num({
             <span className="text-ink-2" title={hint}>
                 {label}
             </span>
-            <span className="flex items-center rounded-md border border-line bg-surface focus-within:border-accent">
+            <span className="flex items-center rounded-lg border border-line bg-surface transition focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/25">
                 <input
                     type="number"
                     step={step}
@@ -72,7 +72,7 @@ function Select<T extends string>({
             <select
                 value={value}
                 onChange={(e) => onChange(e.target.value as T)}
-                className="rounded-md border border-line bg-surface px-2 py-1 text-ink outline-none focus:border-accent"
+                className="rounded-lg border border-line bg-surface px-2 py-1 text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
             >
                 {options.map((o) => (
                     <option key={o.value} value={o.value}>
@@ -126,7 +126,7 @@ function CurveFields({ curve, set }: { curve: CurveSpec; set: (c: CurveSpec) => 
                             const prices = e.target.value.split(',').map((s) => Number(s.trim())).filter((n) => n > 0)
                             if (prices.length >= 2) set({ ...curve, pricesUsd: prices, weights: curve.weights?.length === prices.length - 1 ? curve.weights : undefined })
                         }}
-                        className="tnum w-full rounded-md border border-line bg-surface px-2 py-1 text-ink outline-none focus:border-accent"
+                        className="tnum w-full rounded-lg border border-line bg-surface px-2 py-1 text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25"
                     />
                 </label>
             )
