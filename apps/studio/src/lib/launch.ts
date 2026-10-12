@@ -16,6 +16,7 @@ export const SLIPPAGE_BPS = 100
 /**
  * One transaction: create the token + DBC pool on `loaded.config`, optionally
  * followed by the creator's first buy (min fee when the config allows it).
+ * Unsigned: `baseMint` cosigns after the wallet (see signAndSendAll).
  */
 export async function buildLaunchTx(
     connection: Connection,
@@ -60,7 +61,6 @@ export async function buildLaunchTx(
     tx.recentBlockhash = blockhash
     tx.lastValidBlockHeight = lastValidBlockHeight
     tx.feePayer = creator
-    tx.partialSign(baseMint)
 
     return { tx, baseMint, pool: deriveDbcPoolAddress(loaded.config.quoteMint, baseMint.publicKey, loaded.address) }
 }

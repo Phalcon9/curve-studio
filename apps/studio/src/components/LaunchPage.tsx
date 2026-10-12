@@ -211,7 +211,7 @@ function LaunchForm({ data, sim, cluster }: { data: LoadedConfig; sim: CurveSim;
         try {
             setStatus({ kind: 'busy', step: 'Building transaction' })
             const { tx, baseMint, pool } = await buildLaunchTx(connection, data, { name, symbol, uri }, firstBuy, publicKey)
-            const [sig] = await signAndSendAll(connection, { signTransaction }, [tx], (step) => setStatus({ kind: 'busy', step }))
+            const [sig] = await signAndSendAll(connection, { signTransaction }, [tx], (step) => setStatus({ kind: 'busy', step }), [[baseMint]])
             setStatus({ kind: 'done', pool: pool.toBase58(), mint: baseMint.publicKey.toBase58(), sig })
         } catch (e) {
             setStatus({ kind: 'error', message: errorMessage(e) })

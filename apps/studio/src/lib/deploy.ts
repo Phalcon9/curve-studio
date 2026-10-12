@@ -17,7 +17,8 @@ export function quoteMintFor(compiled: CompiledPreset, cluster: Cluster): Public
 }
 
 /**
- * Build the create-config transaction. The connected wallet becomes the
+ * Build the create-config transaction, unsigned: `config` cosigns after the
+ * wallet (see signAndSendAll). The connected wallet becomes the
  * config's feeClaimer, so every token launched on it pays the preset author
  * the partner share of trading fees plus the pool creation fee.
  */
@@ -45,6 +46,5 @@ export async function buildCreateConfigTx(
     tx.recentBlockhash = blockhash
     tx.lastValidBlockHeight = lastValidBlockHeight
     tx.feePayer = author
-    tx.partialSign(config)
     return { tx, config }
 }

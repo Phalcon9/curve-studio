@@ -68,7 +68,7 @@ export function DeployPanel({ compiled, cluster }: { compiled: CompiledPreset | 
                 await prepare(connection, [listTx], publicKey)
                 txs.push(listTx)
             }
-            const [sig] = await signAndSendAll(connection, { signTransaction, signAllTransactions }, txs, (step) => setStatus({ kind: 'busy', step }))
+            const [sig] = await signAndSendAll(connection, { signTransaction, signAllTransactions }, txs, (step) => setStatus({ kind: 'busy', step }), [[config]])
             record(sig)
             setStatus({ kind: 'done', config: address, sig, listed: listIt })
             profile.reload()

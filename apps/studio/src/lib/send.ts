@@ -1,4 +1,4 @@
-import type { Connection, PublicKey, Transaction } from '@solana/web3.js'
+import type { Connection, Keypair, PublicKey, Transaction } from '@solana/web3.js'
 
 export type TxSigner = {
     signTransaction: <T extends Transaction>(tx: T) => Promise<T>
@@ -27,18 +27,23 @@ export async function prepare(connection: Connection, txs: Transaction[], feePay
 /**
  * One wallet prompt for all transactions, then send and confirm them in order,
  * stopping at the first failure so no step runs after a failed one.
+ * `cosigners[i]` (e.g. a new mint or config keypair) sign transaction i after
+ * the wallet: Phantom can't simulate a transaction that is already partially
+ * signed and blocks it as possibly malicious.
  */
 export async function signAndSendAll(
     connection: Connection,
     wallet: TxSigner,
     txs: Transaction[],
-    onStep: (step: string) => void = () => {}
+    onStep: (step: string) => void = () => {},
+    cosigners: Keypair[][] = []
 ): Promise<string[]> {
     onStep('Waiting for wallet')
     const signed =
         txs.length > 1 && wallet.signAllTransactions
             ? await wallet.signAllTransactions(txs)
             : await txs.reduce<Promise<Transaction[]>>(async (acc, tx) => [...(await acc), await wallet.signTransaction(tx)], Promise.resolve([]))
+    signed.forEach((tx, i) => cosigners[i]?.length && tx.partialSign(...cosigners[i]))
 
     const sent: string[] = []
     for (const [i, tx] of signed.entries()) {
